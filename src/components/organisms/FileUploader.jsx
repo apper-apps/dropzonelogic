@@ -5,20 +5,23 @@ import DropZone from "@/components/molecules/DropZone"
 import FileCard from "@/components/molecules/FileCard"
 import UploadSummary from "@/components/molecules/UploadSummary"
 import FilePreviewModal from "@/components/molecules/FilePreviewModal"
+import CompressionPanel from "@/components/molecules/CompressionPanel"
 import Loading from "@/components/ui/Loading"
 import Error from "@/components/ui/Error"
 import Empty from "@/components/ui/Empty"
 import fileService from "@/services/api/fileService"
-import { validateFile, createFilePreview } from "@/utils/fileHelpers"
+import { validateFile, createFilePreview, compressFile, estimateCompressedSize } from "@/utils/fileHelpers"
 
 const FileUploader = () => {
-  const [files, setFiles] = useState([])
+const [files, setFiles] = useState([])
   const [uploadConfig, setUploadConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [previewFile, setPreviewFile] = useState(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-
+  const [compressionEnabled, setCompressionEnabled] = useState(true)
+  const [compressionQuality, setCompressionQuality] = useState(80)
+  const [isCompressionPanelOpen, setIsCompressionPanelOpen] = useState(false)
   // Load upload configuration
   useEffect(() => {
     const loadConfig = async () => {
@@ -41,7 +44,7 @@ const FileUploader = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  const addFiles = async (newFiles) => {
+const addFiles = async (newFiles) => {
     if (!uploadConfig) return
 
     const processedFiles = []
@@ -57,10 +60,26 @@ const FileUploader = () => {
 
       const preview = await createFilePreview(file)
       
+      // Estimate compressed size if compression is enabled
+      let compressedSize = file.size
+      let compressedFile = file
+      
+      if (compressionEnabled && file.type.startsWith('image/')) {
+        try {
+          compressedSize = await estimateCompressedSize(file, compressionQuality)
+          compressedFile = await compressFile(file, compressionQuality)
+        } catch (error) {
+          console.warn('Compression estimation failed:', error)
+          compressedSize = file.size
+          compressedFile = file
+        }
+      }
+      
       const processedFile = {
         id: fileId,
         name: file.name,
         size: file.size,
+        compressedSize: compressedSize,
         type: file.type,
         status: "pending",
         progress: 0,
@@ -68,7 +87,10 @@ const FileUploader = () => {
         timeRemaining: 0,
         error: "",
         preview: preview,
-        originalFile: file
+        originalFile: file,
+        compressedFile: compressedFile,
+        compressionRatio: compressionEnabled && file.type.startsWith('image/') ? 
+          Math.round(((file.size - compressedSize) / file.size) * 100) : 0
       }
       
       processedFiles.push(processedFile)
@@ -266,6 +288,10 @@ const FileUploader = () => {
     />
   }
 
+// Calculate totals for compression panel
+  const originalTotalSize = files.reduce((acc, file) => acc + file.size, 0)
+  const compressedTotalSize = files.reduce((acc, file) => acc + (file.compressedSize || file.size), 0)
+
   return (
     <div className="space-y-8">
       {/* Drop Zone */}
@@ -274,6 +300,19 @@ const FileUploader = () => {
         acceptedTypes={uploadConfig.allowedTypes}
         maxFileSize={uploadConfig.maxFileSize}
       />
+
+      {/* Compression Settings Panel */}
+      {files.length > 0 && (
+        <CompressionPanel
+          isOpen={isCompressionPanelOpen}
+          onToggle={() => setIsCompressionPanelOpen(!isCompressionPanelOpen)}
+          quality={compressionQuality}
+          onQualityChange={setCompressionQuality}
+          files={files}
+          originalTotalSize={originalTotalSize}
+          compressedTotalSize={compressedTotalSize}
+        />
+      )}
 
       {/* Upload Summary */}
       {files.length > 0 && (

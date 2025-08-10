@@ -75,9 +75,15 @@ const FileCard = ({ file, onRemove, onCancel, onPause, onResume, onPreview }) =>
               <h3 className="font-medium text-gray-900 truncate" title={file.name}>
                 {file.name}
               </h3>
-              <p className="text-sm text-gray-500">
-                {formatFileSize(file.size)}
-              </p>
+<div className="text-sm text-gray-500 space-y-1">
+                <p>{formatFileSize(file.size)}</p>
+                {file.compressedSize && file.compressedSize !== file.size && (
+                  <p className="text-blue-600 flex items-center gap-1">
+                    <ApperIcon name="ArrowDown" size={12} />
+                    {formatFileSize(file.compressedSize)} ({file.compressionRatio}% smaller)
+                  </p>
+                )}
+              </div>
             </div>
             <Badge
               variant={getStatusVariant(file.status)}

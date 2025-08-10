@@ -13,7 +13,7 @@ class FileService {
     return { ...this.uploadConfig }
   }
 
-  async simulateFileUpload(fileId, onProgress) {
+async simulateFileUpload(fileId, onProgress, fileSize = 10485760) {
     const totalChunks = 100
     let uploadedChunks = 0
     const startTime = Date.now()
@@ -36,14 +36,15 @@ class FileService {
             id: fileId,
             status: "completed",
             url: `https://cdn.example.com/uploads/${fileId}`,
-            uploadedAt: new Date().toISOString()
+            uploadedAt: new Date().toISOString(),
+            fileSize: fileSize
           })
           return
         }
 
         const progress = Math.min(uploadedChunks / totalChunks * 100, 100)
         const elapsedTime = (Date.now() - startTime) / 1000
-        const uploadSpeed = (uploadedChunks / totalChunks * 10485760) / elapsedTime // Simulate 10MB file
+        const uploadSpeed = (uploadedChunks / totalChunks * fileSize) / elapsedTime // Use actual file size
         const remainingTime = elapsedTime * (totalChunks - uploadedChunks) / uploadedChunks
 
         if (onProgress) {
@@ -60,7 +61,6 @@ class FileService {
       this.activeUploads.set(fileId, uploadInterval)
     })
   }
-
   async cancelUpload(fileId) {
     await delay(100)
     
