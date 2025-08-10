@@ -1,0 +1,7 @@
+{
+  "Id": 1,
+  "maxFileSize": 10485760,
+  "allowedTypes": ["image", "video", "audio", "text", "pdf", "document", "spreadsheet", "presentation", "archive"],
+  "concurrent": 3,
+  "chunkSize": 1048576
+}
